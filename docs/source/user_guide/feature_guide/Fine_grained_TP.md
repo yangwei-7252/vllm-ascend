@@ -75,6 +75,10 @@ Within a qualifying MoE model, `mlp_tensor_parallel_size` shards the dense MLP l
 
 If the largest cudagraph capture size does not cover the largest decode-shaped step (`min(max_num_batched_tokens, max_num_seqs * (1 + num_speculative_tokens))`), both `oproj_tensor_parallel_size` and `mlp_tensor_parallel_size` are **disabled automatically at startup with a warning**, and the deployment still starts without them; raise `max_cudagraph_capture_size` to re-enable. At runtime, a step dispatched outside the captured graphs fails loudly with an explicit error instead of silently hanging the cross-DP collectives.
 
+**GLM-5.3-Flash on Ascend 950DT (A5).** If image input is enabled with `weight_nz_mode=2`, set `finegrained_tp_config.mlp_tensor_parallel_size` to `1` on builds without the [vision projection fix (#23431)](https://github.com/vllm-project/vllm-ascend/pull/23431). On affected builds, the visual Gate/Up projection can gather patch rows across DP ranks during startup profiling. The NZ projection wrapper then tries to reshape the gathered output to the original local patch count, which fails.
+
+With the fix, visual Gate/Up and Down use standard TP. Eligible dense MLP layers in the language model can still use fine-grained MLP TP with `weight_nz_mode=2`.
+
 #### Preconditions for QKV IProj TP
 
 Set `qkv_iproj_tensor_parallel_size` above `1` when the deployment meets these conditions.
